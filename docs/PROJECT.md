@@ -8,35 +8,28 @@ This project aims to build a browser-based IDE that can run entirely client-side
 
 ## Architecture
 
-The project is organized as a monorepo with three main packages:
+The project is organized as a monorepo with two main directories:
 
-### 1. ide-core (Headless IDE)
+### packages/ide-core (Internal Package)
 
-The core logic layer - completely UI-agnostic. This package provides:
+The core package containing all IDE logic - completely UI-agnostic but includes React components. This package provides:
 
 - **FileSystem**: Virtual file system operations (read, write, mkdir, delete)
 - **Terminal**: PTY abstraction with buffer management and resize handling
 - **Tabs**: Tab management (open, close, reorder, active state)
 - **Workspace**: Project configuration (dependencies, scripts, settings)
 - **Process**: Process management (start, stop, input/output streams)
+- **Compiler**: Client-side (Web Workers + esbuild) and server-side compilation
+- **UI Components**: Monaco Editor, FileTree, Terminal UI, Tab bar, Preview
 
-### 2. ide-ui
+### apps/web (Web Application)
 
-The user interface layer built with React. Provides:
+The main web application that consumes `ide-core` to provide a real IDE experience:
 
-- Monaco Editor integration with full VS Code-like experience
-- FileTree component for browsing project files
-- Terminal UI using xterm.js
-- Tab bar for open files
-- Preview pane with iframe isolation
-- Split pane layout system
-
-### 3. ide-compiler
-
-The compilation and execution layer. Supports multiple runtime backends:
-
-- **ClientCompiler**: Uses Web Workers and esbuild for in-browser bundling
-- **ServerCompiler**: Connects to external server-side runtimes for non-JavaScript languages
+- Full IDE interface with layout
+- Project management
+- Preview in iframe
+- Integration with external providers
 
 ## Key Features
 
@@ -74,11 +67,12 @@ pnpm dev
 
 ```
 ide/
-├── docs/               # Documentation
+├── docs/                   # Documentation
 ├── packages/
-│   ├── ide-core/       # Headless IDE logic
-│   ├── ide-ui/         # React components
-│   └── ide-compiler/   # Compilation backends
+│   └── ide-core/           # Internal package - all IDE logic
+├── apps/
+│   └── web/                # Webapp consuming ide-core
+└── pnpm-workspace.yaml     # Monorepo configuration
 ```
 
 ## License
