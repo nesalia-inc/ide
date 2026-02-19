@@ -1,14 +1,8 @@
 # IDE Project
 
+> **Status**: Work in Progress - No implementation yet
+
 A local and server-side online IDE with external providers, similar to Sandpack or CodeSandbox but open-source.
-
-## Quick Start
-
-```bash
-pnpm install
-pnpm build
-pnpm dev
-```
 
 ## Documentation
 
