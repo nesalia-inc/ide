@@ -21,7 +21,7 @@ The UI Layer connects the headless VFS to React components. It provides reactive
 
 The UI uses a **push-based** approach with VFS events. Components subscribe to file system changes and update automatically.
 
-```typescript
+```ts
 // Components receive real-time updates
 const FileExplorer = () => {
   const files = useVFS()
@@ -63,7 +63,7 @@ const FileExplorer = () => {
 
 We recommend **Zustand** for state management:
 
-```typescript
+```ts
 import { create } from 'zustand'
 
 type IDEState = {
@@ -94,7 +94,7 @@ export const useIDEStore = create<IDEState>((set) => ({
 
 UI should update immediately on user action, then sync with VFS asynchronously:
 
-```typescript
+```ts
 const Editor = ({ path }) => {
   const file = useFile(path)
 
@@ -127,7 +127,7 @@ const Editor = ({ path }) => {
 
 For large directories (1000+ files), use virtualization:
 
-```typescript
+```ts
 import { useVirtualizer } from '@tanstack/react-virtual'
 
 const FileList = ({ files }) => {
@@ -159,7 +159,7 @@ const FileList = ({ files }) => {
 
 Only load file contents when needed:
 
-```typescript
+```ts
 // Don't load all files in memory
 const useDirectory = (path: string) => {
   const [files, setFiles] = useState<DirectoryEntry[]>([])
@@ -181,7 +181,7 @@ const useDirectory = (path: string) => {
 
 When multiple users edit the same file:
 
-```typescript
+```ts
 const useFileLock = (path: string) => {
   const { lock, isLocked } = useLock(path)
 
@@ -211,7 +211,7 @@ const useFileLock = (path: string) => {
 
 For moving files between directories:
 
-```typescript
+```ts
 const handleDrop = async (draggedPath: string, targetPath: string) => {
   // Check locks before move
   const lock = vfs.getLock(draggedPath)
@@ -247,7 +247,7 @@ Use CSS variables for theming:
 
 Components use these variables:
 
-```typescript
+```ts
 const styles = {
   container: {
     backgroundColor: 'var(--ide-bg)',
