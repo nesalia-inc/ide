@@ -48,16 +48,18 @@ const FileExplorer = () => {
 
 ## Components
 
-| Component | Responsibility | Dependencies |
-|-----------|---------------|--------------|
-| `FileTree` | Expandable tree view | `readDir`, `watch`, `stat` |
-| `FileExplorer` | Sidebar with actions (new, rename, delete) | All VFS methods |
-| `CodeEditor` | Monaco editor wrapper | `readFile`, `writeFile`, `lock` |
-| `Tabs` | Tab management (editor/terminal/preview) | `stat`, `exists` |
-| `Breadcrumb` | Path navigation | `resolve`, `dirname` |
-| `ContextMenu` | Right-click menu | `stat`, `getLock`, `lock` |
-| `SearchBar` | File search | `readDir` + glob |
-| `StatusBar` | Show current file, locks, errors | Various |
+Each component follows the **composed components** pattern (shadcn-like).
+
+| Component | Sub-components |
+|-----------|---------------|
+| `FileTree` | `Root`, `Breadcrumb`, `Toolbar`, `Content`, `Item`, `Folder`, `Skeleton`, `Empty`, `ContextMenu` |
+| `CodeEditor` | `Root`, `Toolbar`, `Gutter`, `Main`, `Minimap`, `Skeleton` |
+| `Tabs` | `Root`, `List`, `Tab`, `Content`, `Indicator` |
+| `Breadcrumb` | `Root`, `Item`, `Separator` |
+| `StatusBar` | `Root`, `Item`, `Cursor`, `Language`, `Encoding`, `Lock` |
+| `FileExplorer` | `Root`, `Toolbar`, `Sidebar`, `ContextMenu` |
+| `ContextMenu` | `Root`, `Item`, `Separator`, `Group`, `Trigger` |
+| `SearchBar` | `Root`, `Input`, `Results`, `ResultItem` |
 
 ## State Management
 
@@ -452,7 +454,59 @@ ComponentName/
 export { FileTree } from './FileTree'
 export type { FileTreeProps } from './FileTreeProps'
 export { FileTreeSkeleton } from './FileTreeSkeleton'
+
+// Composed components (like shadcn)
+export { FileTreeContent } from './FileTreeContent'
+export { FileTreeItem } from './FileTreeItem'
+export { FileTreeFolder } from './FileTreeFolder'
+export { FileTreeToolbar } from './FileTreeToolbar'
+export { FileTreeBreadcrumb } from './FileTreeBreadcrumb'
 ```
+
+### Composed Components Pattern
+
+Each component exposes sub-components that can be composed together using the `children` prop:
+
+```ts
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+import { FileTreeToolbar } from '@deessejs/ide-ui/FileTree/FileTreeToolbar'
+import { FileTreeContent } from '@deessejs/ide-ui/FileTree/FileTreeContent'
+import { FileTreeItem } from '@deessejs/ide-ui/FileTree/FileTreeItem'
+import { FileTreeBreadcrumb } from '@deessejs/ide-ui/FileTree/FileTreeBreadcrumb'
+
+// Composed: build the component piece by piece
+<FileTree rootPath="/src">
+  <FileTreeBreadcrumb path={currentPath} onNavigate={navigate} />
+  <FileTreeToolbar>
+    <button onClick={createFile}>New File</button>
+    <button onClick={createFolder}>New Folder</button>
+  </FileTreeToolbar>
+  <FileTreeContent>
+    {files.map(file => (
+      <FileTreeItem
+        key={file.path}
+        file={file}
+        onClick={() => openFile(file.path)}
+        onContextMenu={(e) => showMenu(e, file)}
+      />
+    ))}
+  </FileTreeContent>
+</FileTree>
+```
+
+### Available Sub-Components
+
+| Component | Description |
+|-----------|-------------|
+| `FileTree.Root` | Container that provides VFS context |
+| `FileTree.Breadcrumb` | Path navigation within the tree |
+| `FileTree.Toolbar` | Action buttons (new file, new folder, refresh) |
+| `FileTree.Content` | The actual file/folder list |
+| `FileTree.Item` | Individual file or folder |
+| `FileTree.Folder` | Expandable folder (for custom rendering) |
+| `FileTree.Skeleton` | Loading state |
+| `FileTree.Empty` | Empty state |
+| `FileTree.ContextMenu` | Right-click menu |
 
 ### Usage Examples
 
@@ -647,6 +701,50 @@ export const App = () => {
 }
 ```
 
+### FileTree Composed
+
+```ts
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+import { FileTreeToolbar } from '@deessejs/ide-ui/FileTree/FileTreeToolbar'
+import { FileTreeContent } from '@deessejs/ide-ui/FileTree/FileTreeContent'
+import { FileTreeItem } from '@deessejs/ide-ui/FileTree/FileTreeItem'
+import { FileTreeBreadcrumb } from '@deessejs/ide-ui/FileTree/FileTreeBreadcrumb'
+
+// Full control over rendering
+const MyFileTree = ({ rootPath }: { rootPath: string }) => {
+  const { files, isLoading, createFile, createFolder } = useDirectory(rootPath)
+
+  if (isLoading) return <FileTree.Skeleton />
+
+  return (
+    <FileTree rootPath={rootPath}>
+      <FileTreeBreadcrumb path={rootPath} onNavigate={navigate} />
+
+      <FileTreeToolbar>
+        <FileTreeToolbar.NewFile onClick={createFile} />
+        <FileTreeToolbar.NewFolder onClick={createFolder} />
+      </FileTreeToolbar>
+
+      <FileTreeContent>
+        {files.map((item) => (
+          <FileTreeItem
+            key={item.path}
+            file={item}
+            isExpanded={expanded.has(item.path)}
+            onToggle={() => toggleExpand(item.path)}
+            onClick={() => item.isFile ? openFile(item.path) : toggleExpand(item.path)}
+            onContextMenu={(e) => showContextMenu(e, item)}
+          />
+        ))}
+      </FileTreeContent>
+    </FileTree>
+  )
+}
+
+// Or simpler: let FileTree handle everything
+<FileTree rootPath="/src" />
+```
+
 ### FileTree with Custom Icons
 
 ```ts
@@ -669,6 +767,36 @@ import { FileIcon, FolderIcon, TypeScriptIcon } from './icons'
 />
 ```
 
+### CodeEditor Composed
+
+```ts
+import { CodeEditor } from '@deessejs/ide-ui/CodeEditor'
+import { CodeEditorToolbar } from '@deessejs/ide-ui/CodeEditor/CodeEditorToolbar'
+import { CodeEditorGutter } from '@deessejs/ide-ui/CodeEditor/CodeEditorGutter'
+import { CodeEditorMinimap } from '@deessejs/ide-ui/CodeEditor/CodeEditorMinimap'
+
+<CodeEditor path="/src/main.ts">
+  <CodeEditorToolbar>
+    <CodeEditorToolbar.LanguageSelector
+      value={language}
+      onChange={setLanguage}
+    />
+    <CodeEditorToolbar.FormatButton onClick={formatCode} />
+    <CodeEditorToolbar.SaveButton onClick={save} />
+  </CodeEditorToolbar>
+
+  <CodeEditorGutter lineNumbers />
+
+  <CodeEditorMain
+    value={content}
+    onChange={handleChange}
+    language={language}
+  />
+
+  <CodeEditorMinimap enabled={showMinimap} />
+</CodeEditor>
+```
+
 ### CodeEditor with Custom Theme
 
 ```ts
@@ -686,6 +814,37 @@ import { CodeEditor } from '@deessejs/ide-ui/CodeEditor'
   onSave={(content) => saveFile('/src/main.ts', content)}
   onChange={(content) => debouncedSave(content)}
 />
+```
+
+### Tabs Composed
+
+```ts
+import { Tabs } from '@deessejs/ide-ui/Tabs'
+import { TabsList } from '@deessejs/ide-ui/Tabs/TabsList'
+import { TabsTab } from '@deessejs/ide-ui/Tabs/TabsTab'
+import { TabsContent } from '@deessejs/ide-ui/Tabs/TabsContent'
+
+<Tabs value={activeTabId} onValueChange={setActiveTab}>
+  <TabsList>
+    {tabs.map(tab => (
+      <TabsTab
+        key={tab.id}
+        value={tab.id}
+        onClose={(e) => closeTab(tab.id)}
+        isDirty={tab.isDirty}
+        icon={getFileIcon(tab.path)}
+      >
+        {tab.title}
+      </TabsTab>
+    ))}
+  </TabsList>
+
+  {tabs.map(tab => (
+    <TabsContent key={tab.id} value={tab.id}>
+      {tab.content}
+    </TabsContent>
+  ))}
+</Tabs>
 ```
 
 ### Tabs with Drag and Drop
@@ -739,6 +898,35 @@ import { ContextMenu } from '@deessejs/ide-ui/ContextMenu'
     { label: 'Delete', onClick: () => confirmDelete(), variant: 'destructive' },
   ]}
 />
+```
+
+### StatusBar Composed
+
+```ts
+import { StatusBar } from '@deessejs/ide-ui/StatusBar'
+import { StatusBarItem } from '@deessejs/ide-ui/StatusBar/StatusBarItem'
+import { StatusBarCursor } from '@deessejs/ide-ui/StatusBar/StatusBarCursor'
+import { StatusBarLanguage } from '@deessejs/ide-ui/StatusBar/StatusBarLanguage'
+import { StatusBarEncoding } from '@deessejs/ide-ui/StatusBar/StatusBarEncoding'
+
+<StatusBar>
+  <StatusBarItem position="left">
+    {filePath}
+  </StatusBarItem>
+
+  <StatusBarCursor
+    line={cursor.line}
+    column={cursor.column}
+  />
+
+  <StatusBarLanguage value={language} />
+
+  <StatusBarEncoding value="UTF-8" />
+
+  <StatusBarItem position="right">
+    {lockInfo && <StatusBarItem.Lock lockedBy={lockInfo.owner} />}
+  </StatusBarItem>
+</StatusBar>
 ```
 
 ### StatusBar
