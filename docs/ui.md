@@ -550,6 +550,260 @@ const MyComponent = () => {
 }
 ```
 
+## Usage Examples
+
+### Basic Setup
+
+```ts
+// main.tsx
+import { VFSProvider } from '@deessejs/ide-ui'
+import { createFileSystem, folder, file } from '@deessejs/vfs'
+import { App } from './App'
+
+const vfs = createFileSystem({
+  root: folder({
+    name: '/',
+    children: {
+      'package.json': file({ name: 'package.json', content: '{}' }),
+      'src': folder({
+        name: 'src',
+        children: {
+          'main.ts': file({ name: 'main.ts', content: 'console.log("hello")' })
+        }
+      })
+    }
+  })
+})
+
+createRoot(document.getElementById('root')!).render(
+  <VFSProvider vfs={vfs}>
+    <App />
+  </VFSProvider>
+)
+```
+
+### Full IDE Layout
+
+```ts
+// App.tsx
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+import { CodeEditor } from '@deessejs/ide-ui/CodeEditor'
+import { Tabs } from '@deessejs/ide-ui/Tabs'
+import { Breadcrumb } from '@deessejs/ide-ui/Breadcrumb'
+import { StatusBar } from '@deessejs/ide-ui/StatusBar'
+import { useIDEStore } from './store'
+
+export const App = () => {
+  const { tabs, activeTab, currentPath, openFile } = useIDEStore()
+
+  return (
+    <div className="h-screen flex flex-col bg-[var(--ide-bg)]">
+      {/* Top: Tabs */}
+      <Tabs
+        tabs={tabs}
+        activeTabId={activeTab?.id}
+        onTabClick={(tab) => openFile(tab.path)}
+        onTabClose={(tabId) => closeTab(tabId)}
+      />
+
+      {/* Middle: Sidebar + Editor */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: File Explorer */}
+        <aside className="w-64 border-r border-[var(--ide-border)] flex flex-col">
+          <Breadcrumb
+            path={currentPath}
+            onNavigate={(path) => navigateTo(path)}
+          />
+          <FileTree
+            rootPath={currentPath}
+            onFileClick={(path) => openFile(path)}
+            onFolderClick={(path) => setCurrentPath(path)}
+          />
+        </aside>
+
+        {/* Right: Editor */}
+        <main className="flex-1 flex flex-col">
+          {activeTab ? (
+            <CodeEditor
+              path={activeTab.path}
+              onSave={(content) => saveFile(activeTab.path, content)}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-[var(--ide-fg)] opacity-50">
+              No file open
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Bottom: Status Bar */}
+      <StatusBar
+        filePath={activeTab?.path}
+        cursorPosition={{ line: 1, column: 1 }}
+        language={activeTab?.language}
+      />
+    </div>
+  )
+}
+```
+
+### FileTree with Custom Icons
+
+```ts
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+import { FileIcon, FolderIcon, TypeScriptIcon } from './icons'
+
+<FileTree
+  rootPath="/src"
+  onFileClick={(path) => openFile(path)}
+  icons={{
+    file: <FileIcon />,
+    folder: <FolderIcon />,
+    typescript: <TypeScriptIcon />,
+    // Custom icon for specific extensions
+    '.ts': <TypeScriptIcon />,
+    '.tsx': <TypeScriptIcon />,
+  }}
+  defaultExpanded={['/src', '/src/components']}
+  showHiddenFiles={false}
+/>
+```
+
+### CodeEditor with Custom Theme
+
+```ts
+import { CodeEditor } from '@deessejs/ide-ui/CodeEditor'
+
+<CodeEditor
+  path="/src/main.ts"
+  theme="vs-dark"
+  options={{
+    fontSize: 14,
+    minimap: { enabled: true },
+    lineNumbers: 'on',
+    scrollBeyondLastLine: false,
+  }}
+  onSave={(content) => saveFile('/src/main.ts', content)}
+  onChange={(content) => debouncedSave(content)}
+/>
+```
+
+### Tabs with Drag and Drop
+
+```ts
+import { Tabs } from '@deessejs/ide-ui/Tabs'
+
+<Tabs
+  tabs={[
+    { id: '1', path: '/src/main.ts', title: 'main.ts', type: 'editor' },
+    { id: '2', path: '/src/App.tsx', title: 'App.tsx', type: 'editor' },
+    { id: '3', path: '/src/utils.ts', title: 'utils.ts', type: 'editor' },
+  ]}
+  activeTabId="2"
+  onTabClick={(tab) => setActiveTab(tab.id)}
+  onTabClose={(id) => closeTab(id)}
+  onTabsReorder={(tabs) => reorderTabs(tabs)}
+  showIcons={true}
+/>
+```
+
+### Breadcrumb Navigation
+
+```ts
+import { Breadcrumb } from '@deessejs/ide-ui/Breadcrumb'
+
+<Breadcrumb
+  path="/src/components/Button"
+  onNavigate={(segment) => {
+    // '/src/components' when clicking 'components'
+    // '/src' when clicking 'src'
+    navigateTo(segment)
+  }}
+  maxItems={4}
+  truncation="middle"
+/>
+```
+
+### Context Menu
+
+```ts
+import { ContextMenu } from '@deessejs/ide-ui/ContextMenu'
+
+<ContextMenu
+  trigger="right-click"
+  items={[
+    { label: 'New File', onClick: () => createNewFile() },
+    { label: 'New Folder', onClick: () => createNewFolder() },
+    { type: 'separator' },
+    { label: 'Rename', onClick: () => startRename() },
+    { label: 'Delete', onClick: () => confirmDelete(), variant: 'destructive' },
+  ]}
+/>
+```
+
+### StatusBar
+
+```ts
+import { StatusBar } from '@deessejs/ide-ui/StatusBar'
+
+<StatusBar
+  filePath="/src/main.ts"
+  cursorPosition={{ line: 10, column: 25 }}
+  language="typescript"
+  encoding="UTF-8"
+  eol="LF"
+  // Optional: show lock status
+  lockedBy="alice"
+  onLockClick={() => showLockInfo()}
+/>
+```
+
+### SearchBar
+
+```ts
+import { SearchBar } from '@deessejs/ide-ui/SearchBar'
+
+<SearchBar
+  placeholder="Search files..."
+  onSearch={(query) => searchFiles(query)}
+  onResultClick={(result) => openFile(result.path, result.line)}
+  options={{
+    includeGlob: '*.{ts,tsx,js,jsx}',
+    excludeGlob: 'node_modules/**',
+    caseSensitive: false,
+  }}
+/>
+```
+
+### Composing Without Full Layout
+
+```ts
+// Just the file tree, standalone
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+
+<div className="w-48 bg-gray-900">
+  <FileTree rootPath="/project" onFileClick={console.log} />
+</div>
+
+// Just the editor, standalone
+import { CodeEditor } from '@deessejs/ide-ui/CodeEditor'
+
+<CodeEditor
+  path="/test.ts"
+  content="const x = 1"
+  readOnly={true}
+/>
+
+// Just tabs, standalone
+import { Tabs } from '@deessejs/ide-ui/Tabs'
+
+<Tabs
+  tabs={[{ id: '1', title: 'Tab 1' }]}
+  activeTabId="1"
+  onTabClick={...}
+/>
+```
+
 ## Related Documentation
 
 - [VFS Module](../packages/vfs/README.md)
