@@ -232,7 +232,67 @@ const handleDrop = async (draggedPath: string, targetPath: string) => {
 
 ## Styling
 
-Use CSS variables for theming:
+Components use **CSS variables** for theming and are **Tailwind-compatible**:
+
+### CSS Variables
+
+```css
+/* Base theme */
+:root {
+  --ide-bg: #1e1e1e;
+  --ide-fg: #d4d4d4;
+  --ide-accent: #007acc;
+  --ide-border: #3c3c3c;
+  --ide-sidebar-width: 250px;
+  --ide-tab-height: 35px;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --ide-bg: #1e1e1e;
+  --ide-fg: #d4d4d4;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --ide-bg: #ffffff;
+  --ide-fg: #1e1e1e;
+}
+```
+
+### Tailwind Compatibility
+
+```ts
+// Components use utility classes that work with Tailwind
+import { cn } from '@deessejs/ide-ui/lib/utils'
+
+const Component = ({ className }: { className?: string }) => {
+  return (
+    <div className={cn(
+      "flex items-center gap-2 p-2",
+      "bg-[var(--ide-bg)] text-[var(--ide-fg)]",
+      className
+    )}>
+      {children}
+    </div>
+  )
+}
+
+// Override any style via className prop
+<FileTree className="w-64 bg-red-500" />
+```
+
+### No Tailwind? No Problem
+
+CSS variables work without Tailwind:
+
+```css
+.ide-container {
+  background-color: var(--ide-bg);
+  color: var(--ide-fg);
+  padding: var(--ide-spacing, 8px);
+}
+```
 
 ```css
 :root {
@@ -257,48 +317,238 @@ const styles = {
 }
 ```
 
+## Component Philosophy (shadcn-like)
+
+Each component is **independent**, **composable**, and can be imported individually. Like shadcn, you only import what you need.
+
+### Import Pattern
+
+```ts
+// Import individual components - tree-shakeable
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+import { CodeEditor } from '@deessejs/ide-ui/CodeEditor'
+import { Tabs } from '@deessejs/ide-ui/Tabs'
+import { Breadcrumb } from '@deessejs/ide-ui/Breadcrumb'
+
+// Each component works standalone
+// No need to import the whole UI library
+```
+
+### Each Component Includes Its Own Logic
+
+```ts
+// FileTree.tsx - self-contained
+import { useDirectory } from '@deessejs/ide-ui/hooks/useDirectory'
+import { FileTreeItem } from './FileTreeItem'
+
+export const FileTree = ({ rootPath = '/' }: { rootPath?: string }) => {
+  const { files, isLoading } = useDirectory(rootPath)
+
+  if (isLoading) return <Skeleton />
+
+  return (
+    <Tree>
+      {files.map(file => (
+        <FileTreeItem key={file.path} file={file} />
+      ))}
+    </Tree>
+  )
+}
+```
+
 ## File Structure
 
 ```
 ide-ui/
-├── src/
-│   ├── components/
-│   │   ├── FileTree/
-│   │   │   ├── FileTree.tsx
-│   │   │   ├── FileTreeItem.tsx
-│   │   │   └── index.ts
-│   │   ├── FileExplorer/
-│   │   ├── CodeEditor/
-│   │   ├── Tabs/
-│   │   ├── Breadcrumb/
-│   │   ├── ContextMenu/
-│   │   ├── SearchBar/
-│   │   └── StatusBar/
-│   ├── hooks/
-│   │   ├── useVFS.ts
-│   │   ├── useFile.ts
-│   │   ├── useDirectory.ts
-│   │   ├── useWatcher.ts
-│   │   ├── useLock.ts
-│   │   ├── useTabs.ts
-│   │   └── useSearch.ts
-│   ├── store/
-│   │   └── ideStore.ts
-│   ├── index.ts
-│   └── index.css
-├── package.json
-└── tsconfig.json
+├── FileTree/
+│   ├── FileTree.tsx
+│   ├── FileTreeItem.tsx
+│   ├── FileTreeSkeleton.tsx
+│   ├── useFileTree.ts        # component-specific hook
+│   └── index.ts             # public API
+│
+├── CodeEditor/
+│   ├── CodeEditor.tsx
+│   ├── CodeEditorSkeleton.tsx
+│   ├── useCodeEditor.ts
+│   └── index.ts
+│
+├── Tabs/
+│   ├── Tabs.tsx
+│   ├── Tab.tsx
+│   ├── TabList.tsx
+│   ├── TabPanel.tsx
+│   ├── useTabs.ts
+│   └── index.ts
+│
+├── Breadcrumb/
+│   ├── Breadcrumb.tsx
+│   ├── BreadcrumbItem.tsx
+│   ├── BreadcrumbSeparator.tsx
+│   └── index.ts
+│
+├── FileExplorer/
+│   ├── FileExplorer.tsx
+│   ├── FileExplorerToolbar.tsx
+│   ├── FileExplorerContextMenu.tsx
+│   └── index.ts
+│
+├── ContextMenu/
+│   ├── ContextMenu.tsx
+│   ├── ContextMenuItem.tsx
+│   ├── ContextMenuSeparator.tsx
+│   └── index.ts
+│
+├── StatusBar/
+│   ├── StatusBar.tsx
+│   ├── StatusBarItem.tsx
+│   ├── StatusBarCursor.tsx
+│   └── index.ts
+│
+├── SearchBar/
+│   ├── SearchBar.tsx
+│   ├── SearchResults.tsx
+│   └── index.ts
+│
+├── hooks/
+│   ├── useVFS.ts              # Core hook - required by most components
+│   ├── useFile.ts
+│   ├── useDirectory.ts
+│   ├── useWatcher.ts
+│   ├── useLock.ts
+│   └── useTabs.ts
+│
+├── lib/
+│   ├── utils.ts              # cn(), clsx helpers
+│   └── vfs.ts                # VFS instance singleton
+│
+├── index.ts                  # Re-exports everything
+├── index.css                 # Base styles + CSS variables
+├── components.css            # Component styles
+└── package.json
+```
+
+### Component Structure Pattern
+
+Each component follows the same pattern:
+
+```
+ComponentName/
+├── ComponentName.tsx         # Main component
+├── ComponentNameSkeleton.tsx # Loading state
+├── ComponentNameProps.ts     # TypeScript interfaces
+├── useComponentName.ts      # Custom hook (optional)
+├── sub-components/          # Internal parts (optional)
+│   ├── ComponentNameItem.tsx
+│   └── ComponentNameGroup.tsx
+├── index.ts                  # Barrel export: export { ComponentName }
+└── ComponentName.css         # Component-specific styles
+```
+
+### index.ts Pattern
+
+```ts
+// FileTree/index.ts
+export { FileTree } from './FileTree'
+export type { FileTreeProps } from './FileTreeProps'
+export { FileTreeSkeleton } from './FileTreeSkeleton'
+```
+
+### Usage Examples
+
+```ts
+// Minimal usage - just drop in
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+
+<FileTree rootPath="/src" />
+
+// With customization - props-based
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+
+<FileTree
+  rootPath="/src"
+  onFileClick={(path) => openTab(path)}
+  onFileContextMenu={(path) => showMenu(path)}
+  showIcons={true}
+  defaultExpanded={['/src/components']}
+/>
+
+// Compose components together
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+import { Breadcrumb } from '@deessejs/ide-ui/Breadcrumb'
+import { Tabs } from '@deessejs/ide-ui/Tabs'
+
+<div className="ide-layout">
+  <aside className="sidebar">
+    <Breadcrumb path={currentPath} onNavigate={navigate} />
+    <FileTree rootPath={currentPath} onFileClick={openFile} />
+  </aside>
+  <main className="editor">
+    <Tabs tabs={openTabs} onClose={closeTab} />
+    <CodeEditor file={activeFile} />
+  </main>
+</div>
 ```
 
 ## Dependencies
 
+Each component only imports what it needs.
+
 | Package | Purpose |
 |---------|---------|
 | `react` | UI framework |
-| `zustand` | State management |
-| `@monaco-editor/react` | Code editor |
-| `@tanstack/react-virtual` | Virtualization |
-| `clsx` | Class name utility |
+| `clsx` | Class name utility (used in lib/utils.ts) |
+| `@deessejs/maybe` | Maybe monad (optional hook returns) |
+| `@deessejs/result` | Result monad (optional hook returns) |
+
+## VFS Instance
+
+The VFS instance must be provided. There are two ways:
+
+### Option 1: Context Provider
+
+```ts
+// Wrap your app with the provider
+import { VFSProvider } from '@deessejs/ide-ui'
+
+const vfs = createFileSystem()
+
+<VFSProvider vfs={vfs}>
+  <App />
+</VFSProvider>
+
+// Components auto-connect via context
+import { FileTree } from '@deessejs/ide-ui/FileTree'
+// FileTree automatically gets vfs from context
+```
+
+### Option 2: Singleton (for simple cases)
+
+```ts
+// lib/vfs.ts - create once, reuse everywhere
+import { createFileSystem } from '@deessejs/vfs'
+
+export const vfs = createFileSystem({
+  root: folder({ name: '/', children: {} })
+})
+
+// Components check for singleton if no context
+import { getVFS } from '@deessejs/ide-ui/lib/vfs'
+```
+
+## Hooks Integration
+
+Hooks work with both approaches:
+
+```ts
+// useVFS returns VFS from context or singleton
+import { useVFS } from '@deessejs/ide-ui/hooks/useVFS'
+
+const MyComponent = () => {
+  const vfs = useVFS()
+  // Works whether provided via context or singleton
+}
+```
 
 ## Related Documentation
 
